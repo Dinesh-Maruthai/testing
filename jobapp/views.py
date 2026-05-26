@@ -2756,26 +2756,27 @@ class AdminLoginView(APIView):
         from django.utils import timezone
         user.login_time = timezone.now()
         user.save(update_fields=["login_time"])
+
         from .models import AdminTrustedDevice
         import hashlib
-       
+        
         user_agent = request.META.get('HTTP_USER_AGENT', '')
         device_fingerprint = hashlib.md5(user_agent.encode()).hexdigest()
-       
+        
         # Get refresh token jti
         refresh_jti = refresh.payload.get('jti', '')
-       
+        
         device, created = AdminTrustedDevice.objects.get_or_create(
             user=user,
             device_fingerprint=device_fingerprint,
-            defaults={
-                'device_name': request.data.get('device_name', 'Web Browser'),
-                'platform': 'web',
-                'is_trusted': True,
-                'refresh_token_jti': refresh_jti
-            }
+            # defaults={
+            #     'device_name': request.data.get('device_name', 'Web Browser'),
+            #     'platform': 'web',
+            #     'is_trusted': True,
+            #     'refresh_token_jti': refresh_jti
+            # }
         )
-       
+        
         if not created:
             # Update existing device
             device.last_used_at = timezone.now()
@@ -2784,6 +2785,7 @@ class AdminLoginView(APIView):
             print(f" Updated existing device: {device.device_name}")
         else:
             print(f" New trusted device added: {device.device_name}")
+        
  
         return Response({
 
@@ -4207,6 +4209,16 @@ class AdminQuietHoursView(APIView):
             }
         )
  
+        # return Response({
+        #     "quiet_hours": {
+        #         "enabled": quiet_hours.enabled,
+        #         "start_time": quiet_hours.start_time,
+        #         "end_time": quiet_hours.end_time,
+        #         "timezone": quiet_hours.timezone,
+        #         "active_days": quiet_hours.active_days,
+        #     }
+        # })
+
         return Response({
             "quiet_hours": {
                 "enabled": quiet_hours.enabled,
@@ -4214,46 +4226,50 @@ class AdminQuietHoursView(APIView):
                 "end_time": quiet_hours.end_time,
                 "timezone": quiet_hours.timezone,
                 "active_days": quiet_hours.active_days,
-            }
+            },
+            "timezone_choices": [          # ADD THIS
+                {"value": value, "label": label}
+                for value, label in AdminQuietHours.TIMEZONE_CHOICES
+            ]
         })
    
  
  
-class AdminQuietHoursView(APIView):
+# class AdminQuietHoursView(APIView):
  
-    #permission_classes = [IsAdminUserType]
+#     #permission_classes = [IsAdminUserType]
  
-    def get(self, request):
-        # Temporary hardcoded admin user
-            # Remove in production
-        user = User.objects.get(id=1) # remove in production
-        quiet_hours, created = AdminQuietHours.objects.get_or_create(
-            admin=user, # remove this line and add below line
-            #admin=request.user,
-            defaults={
-                "enabled": False,
-                "start_time": "22:00",
-                "end_time": "07:00",
-                "timezone": "Asia/Kolkata",
-                "active_days": [
-                    "Mon",
-                    "Tue",
-                    "Wed",
-                    "Thu",
-                    "Fri"
-                ]
-            }
-        )
+#     def get(self, request):
+#         # Temporary hardcoded admin user
+#             # Remove in production
+#         user = User.objects.get(id=1) # remove in production
+#         quiet_hours, created = AdminQuietHours.objects.get_or_create(
+#             admin=user, # remove this line and add below line
+#             #admin=request.user,
+#             defaults={
+#                 "enabled": False,
+#                 "start_time": "22:00",
+#                 "end_time": "07:00",
+#                 "timezone": "Asia/Kolkata",
+#                 "active_days": [
+#                     "Mon",
+#                     "Tue",
+#                     "Wed",
+#                     "Thu",
+#                     "Fri"
+#                 ]
+#             }
+#         )
  
-        return Response({
-            "quiet_hours": {
-                "enabled": quiet_hours.enabled,
-                "start_time": quiet_hours.start_time,
-                "end_time": quiet_hours.end_time,
-                "timezone": quiet_hours.timezone,
-                "active_days": quiet_hours.active_days,
-            }
-        })
+#         return Response({
+#             "quiet_hours": {
+#                 "enabled": quiet_hours.enabled,
+#                 "start_time": quiet_hours.start_time,
+#                 "end_time": quiet_hours.end_time,
+#                 "timezone": quiet_hours.timezone,
+#                 "active_days": quiet_hours.active_days,
+#             }
+#         })
  
 class AdminQuietHoursUpdateView(APIView):
  
@@ -4911,7 +4927,7 @@ class VerifyAdmin2FAOTPView(APIView):
  
         profile.two_factor_enabled = True
         profile.two_factor_method = method
-        
+       
         # Set verified flag based on method
         if method == "email":
             profile.email_verified = True
@@ -4940,8 +4956,7 @@ class VerifyAdmin2FAOTPView(APIView):
             },
             status=status.HTTP_200_OK
         )
-
-
+ 
  
  
 class DisableAdmin2FAView(APIView):
@@ -5304,4 +5319,428 @@ class AdminAccessLogListView(APIView):
             status=status.HTTP_200_OK
         )
  
- 
+
+
+
+ # employer setting 
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+from django.shortcuts import get_object_or_404
+
+from .models import (
+    EmployerPlatformSettings,
+    Plan
+)
+
+from .serializers import (
+    EmployerPlatformSettingsSerializer
+)
+
+
+class EmployerPlatformSettingsView(APIView):
+
+    # permission_classes = [
+    #     IsAuthenticated,
+    #     IsAdminUserType
+    # ]
+
+    # ─────────────────────────────────────────
+    # GET SETTINGS
+    # ─────────────────────────────────────────
+
+    def get(self, request, plan_id):
+
+        # Check Plan Exists
+
+        plan = get_object_or_404(
+            Plan,
+            id=plan_id
+        )
+
+        # Get or Create Settings
+
+        settings_obj, created = (
+            EmployerPlatformSettings.objects.get_or_create(
+                plan=plan
+            )
+        )
+
+        serializer = (
+            EmployerPlatformSettingsSerializer(
+                settings_obj
+            )
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    # ─────────────────────────────────────────
+    # PATCH SETTINGS
+    # ─────────────────────────────────────────
+
+    def patch(self, request, plan_id):
+
+        # Check Plan Exists
+
+        plan = get_object_or_404(
+            Plan,
+            id=plan_id
+        )
+
+        # Get Existing Settings
+        # or Create Automatically
+
+        settings_obj, created = (
+            EmployerPlatformSettings.objects.get_or_create(
+                plan=plan
+            )
+        )
+
+        serializer = (
+            EmployerPlatformSettingsSerializer(
+                settings_obj,
+                data=request.data,
+                partial=True,
+                context={"request": request}
+            )
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        serializer.save()
+
+        return Response(
+            {
+                "message": (
+                    "Employer platform settings "
+                    "updated successfully"
+                ),
+                "data": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
+
+class EmployerWeeklySummaryView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        employer = request.user
+
+        today = timezone.now()
+
+        week_ago = today - timedelta(days=7)
+
+        # ─────────────────────────────────────
+        # JOBS
+        # ─────────────────────────────────────
+
+        jobs = PostAJob.objects.filter(
+            employer=employer
+        )
+
+        active_jobs = jobs.filter(
+            last_date_to_apply__gte=today.date()
+        )
+
+        expired_jobs = jobs.filter(
+            last_date_to_apply__lt=today.date()
+        )
+
+        highlighted_jobs = jobs.filter(
+            is_highlighted=True
+        )
+
+        # ─────────────────────────────────────
+        # APPLICATIONS
+        # ─────────────────────────────────────
+
+        applications = JobApplication.objects.filter(
+            job__employer=employer
+        )
+
+        applications_this_week = applications.filter(
+            applied_date__gte=week_ago
+        )
+
+        # ─────────────────────────────────────
+        # NOTIFICATIONS
+        # ─────────────────────────────────────
+
+        notifications = Notification.objects.filter(
+            user=employer
+        )
+
+        unread_notifications = notifications.filter(
+            is_read=False
+        )
+
+        # ─────────────────────────────────────
+        # JOB APPLICATION STATS
+        # ─────────────────────────────────────
+
+        job_stats = []
+
+        for job in jobs:
+
+            job_applications = JobApplication.objects.filter(
+                job=job
+            )
+
+            job_stats.append({
+
+                "job_id": job.id,
+
+                "job_title": job.job_title,
+
+                "applications_count": (
+                    job_applications.count()
+                ),
+
+                "shortlisted": (
+                    job_applications.filter(
+                        status='shortlisted'
+                    ).count()
+                ),
+
+                "rejected": (
+                    job_applications.filter(
+                        status='rejected'
+                    ).count()
+                ),
+
+                "hired": (
+                    job_applications.filter(
+                        status='hired'
+                    ).count()
+                ),
+            })
+
+        # ─────────────────────────────────────
+        # RECENT APPLICATIONS
+        # ─────────────────────────────────────
+
+        recent_applications = (
+            applications
+            .select_related(
+                'user',
+                'job'
+            )
+            .order_by('-applied_date')[:10]
+        )
+
+        recent_application_data = []
+
+        for app in recent_applications:
+
+            recent_application_data.append({
+
+                "candidate": app.user.email,
+
+                "job_title": app.job.job_title,
+
+                "status": app.status,
+
+                "applied_date": app.applied_date
+            })
+
+        # ─────────────────────────────────────
+        # RECENT NOTIFICATIONS
+        # ─────────────────────────────────────
+
+        recent_notifications = (
+            notifications
+            .order_by('-created_at')[:10]
+        )
+
+        notification_data = []
+
+        for notification in recent_notifications:
+
+            notification_data.append({
+
+                "id": notification.id,
+
+                "message": notification.message,
+
+                "notification_type": (
+                    notification.notification_type
+                ),
+
+                "created_at": notification.created_at,
+
+                "is_read": notification.is_read
+            })
+
+        # ─────────────────────────────────────
+        # FINAL RESPONSE
+        # ─────────────────────────────────────
+
+        return Response({
+
+            "summary": {
+
+                "total_jobs": jobs.count(),
+
+                "active_jobs": active_jobs.count(),
+
+                "expired_jobs": expired_jobs.count(),
+
+                "highlighted_jobs": (
+                    highlighted_jobs.count()
+                ),
+
+                "total_applications": (
+                    applications.count()
+                ),
+
+                "applications_this_week": (
+                    applications_this_week.count()
+                ),
+
+                "unread_notifications": (
+                    unread_notifications.count()
+                )
+            },
+
+            "job_application_stats": job_stats,
+
+            "recent_notifications": notification_data,
+
+            "recent_applications": (
+                recent_application_data
+            )
+        })
+    
+# for push notification
+class RegisterDeviceTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = SaveDeviceTokenSerializer(
+            data=request.data
+        )
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data["fcm_token"]
+        platform = serializer.validated_data.get(
+            "platform",
+            "web"
+        )
+
+        device, created = UserDevice.objects.update_or_create(
+            fcm_token=token,
+            defaults={
+                "user": request.user,
+                "platform": platform,
+                "is_active": True,
+            },
+        )
+        logger.info(
+            "FCM TOKEN REGISTERED | user=%s | device_id=%s | created=%s",
+            request.user.id,
+            device.id,
+            created
+        )
+        return Response(
+            {
+                "status": "token registered",
+                "device_id": device.id,
+                "created": created,
+            }
+        )
+   
+
+# for jobseekersetting
+
+
+from rest_framework import status
+
+from .models import (
+    JobseekerPlatformSettings
+)
+
+from .serializers import (
+    JobseekerPlatformSettingsSerializer
+)
+
+
+
+
+class JobseekerPlatformSettingsView(APIView):
+
+    #permission_classes = [IsAuthenticated,IsAdminUserType]
+
+   
+
+    def get(self, request):
+
+        settings_obj = (
+            JobseekerPlatformSettings.get_settings()
+        )
+
+        serializer = (
+            JobseekerPlatformSettingsSerializer(
+                settings_obj
+            )
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+  
+
+    def patch(self, request):
+
+        settings_obj = (
+            JobseekerPlatformSettings.get_settings()
+        )
+
+        serializer = (
+            JobseekerPlatformSettingsSerializer(
+
+                settings_obj,
+
+                data=request.data,
+
+                partial=True,
+
+                context={
+                    "request": request
+                }
+            )
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        serializer.save()
+
+        return Response(
+
+            {
+                "message": (
+                    "Jobseeker platform settings "
+                    "updated successfully"
+                ),
+
+                "data": serializer.data
+            },
+
+            status=status.HTTP_200_OK
+        )

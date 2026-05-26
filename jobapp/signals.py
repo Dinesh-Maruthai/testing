@@ -35,3 +35,14 @@ def create_message_notification(sender, instance, created, **kwargs):
             related_object_id=instance.conversation.id,
             is_read=False
         )
+
+        NotificationService.create_notification(
+                recipient=instance.receiver,
+                title="New Message",
+                message=(
+                    f"New message from "
+                    f"{instance.sender.username}"
+                ),
+                notification_type='message',
+                related_object_id=instance.conversation.id
+        )

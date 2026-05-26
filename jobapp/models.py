@@ -156,14 +156,14 @@ class JobSeekerProfile(models.Model):
 
 class AdminProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
-
+ 
     department = models.CharField(max_length=100, blank=True)
     bio = models.TextField(blank=True)
     access_level = models.CharField(max_length=50, default='Full')
-
+ 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    two_factor_enabled = models.BooleanField(default=False)   
+    two_factor_enabled = models.BooleanField(default=False)  
     two_factor_method = models.CharField(            
         max_length=10,
         choices=[
@@ -173,10 +173,9 @@ class AdminProfile(models.Model):
         null=True,
         blank=True
     )
-
+ 
     def __str__(self):
         return f"Admin: {self.user.email}"
-
 
 # JOB SEEKER RELATED DETAIL MODELS
 
@@ -1281,6 +1280,21 @@ class NotificationConfig(models.Model):  #newly added 08/05
    
  
 class AdminQuietHours(models.Model):  #newly added 08/05
+
+    TIMEZONE_CHOICES = [
+
+        ("Asia/Kolkata", "(UTC +05:30) Asia/Kolkata"),
+
+        ("America/Los_Angeles", "(UTC -08:00) America/Los_Angeles"),
+
+        ("UTC", "(UTC +00:00) UTC"),
+
+        ("Europe/London", "(UTC +01:00) Europe/London"),
+
+        ("Europe/Berlin", "(UTC +02:00) Europe/Berlin"),
+
+    ]
+ 
  
     admin = models.OneToOneField(
     User,
@@ -1298,9 +1312,10 @@ class AdminQuietHours(models.Model):  #newly added 08/05
     )
  
     timezone = models.CharField(
-        max_length=100,
-        default="Asia/Kolkata"
-    )
+            max_length=100,
+            choices=TIMEZONE_CHOICES,
+            default="Asia/Kolkata"
+        )
  
     active_days = models.JSONField(
         default=list
@@ -1329,6 +1344,53 @@ class NotificationChannelSettings(models.Model): #newly added 08/05
     def __str__(self):
         return "Notification Channel Settings"
  
+
+
+
+
+class UserDevice(models.Model):#newly added 11/05
+
+    PLATFORM_CHOICES = [
+        ("web", "Web Browser"),
+        ("android", "Android"),
+        ("ios", "iOS"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="devices"
+    )
+
+    fcm_token = models.TextField(
+        unique=True
+    )
+
+    platform = models.CharField(
+        max_length=10,
+        choices=PLATFORM_CHOICES,
+        default="web"
+    )
+
+    is_active = models.BooleanField(
+        default=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    def __str__(self):
+
+        return (
+            f"{self.user.email} "
+            f"[{self.platform}]"
+        )
+
 
 
 
@@ -1481,3 +1543,369 @@ class AdminTrustedDevice(models.Model): #changed on 11/05
     def __str__(self):
         return f"{self.user.email} - {self.device_name}"
  
+
+
+
+# employer setting 
+
+
+class EmployerPlatformSettings(models.Model):
+
+    plan = models.OneToOneField(
+        Plan,
+        on_delete=models.CASCADE,
+        related_name="employer_settings"
+    )
+
+    employer_registration = models.BooleanField(
+        default=True
+    )
+
+    email_verification = models.BooleanField(
+        default=True
+    )
+
+    mobile_verification = models.BooleanField(
+        default=False
+    )
+
+    APPROVAL_CHOICES = [
+        ('Manual Type', 'Manual Type'),
+        ('Automatic', 'Automatic'),
+    ]
+
+    approval_type = models.CharField(
+        max_length=20,
+        choices=APPROVAL_CHOICES,
+        default='Manual Type'
+    )
+
+    # Required Docs
+
+    req_company_cert = models.BooleanField(
+        default=False
+    )
+
+    req_gst_cert = models.BooleanField(
+        default=False
+    )
+
+    req_business_email = models.BooleanField(
+        default=False
+    )
+
+    req_company_website = models.BooleanField(
+        default=False
+    )
+
+    # Preferences
+
+    allow_multiple_company = models.BooleanField(
+        default=False
+    )
+
+    allow_multiple_users = models.BooleanField(
+        default=False
+    )
+
+    show_company_reviews = models.BooleanField(
+        default=False
+    )
+
+    enable_company_branding = models.BooleanField(
+        default=False
+    )
+
+    featured_employer_option = models.BooleanField(
+        default=False
+    )
+
+    # Notifications
+
+    notif_email = models.BooleanField(
+        default=False
+    )
+
+    notif_new_signups = models.BooleanField(
+        default=False
+    )
+
+    notif_alerts = models.BooleanField(
+        default=False
+    )
+
+    notif_announcements = models.BooleanField(
+        default=False
+    )
+
+    notif_weekly_summary = models.BooleanField(
+        default=False
+    )
+
+    # Job Settings
+
+    job_expire_days = models.PositiveIntegerField(
+        default=30
+    )
+
+    max_job_posts = models.PositiveIntegerField(
+        default=10
+    )
+
+    featured_job_limit = models.PositiveIntegerField(
+        default=3
+    )
+
+    allow_edit_after_approval = models.BooleanField(
+        default=False
+    )
+
+    ACCOUNT_STATUS_CHOICES = [
+        ('Pending approval', 'Pending approval'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+
+    account_status = models.CharField(
+        max_length=20,
+        choices=ACCOUNT_STATUS_CHOICES,
+        default='Pending approval'
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    def __str__(self):
+
+        return (
+            f"{self.plan.name} Settings"
+        )
+
+
+class NotificationDeliveryLog(models.Model):
+
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+        ('skipped', 'Skipped'),
+    )
+
+    CHANNEL_CHOICES = (
+        ('inapp', 'In App'),
+        ('push', 'Push'),
+        ('email', 'Email'),
+        ('sms', 'SMS'),
+    )
+
+    notification = models.ForeignKey(
+        'Notification',
+        on_delete=models.CASCADE,
+        related_name='delivery_logs'
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='notification_delivery_logs'
+    )
+
+    channel = models.CharField(
+        max_length=20,
+        choices=CHANNEL_CHOICES
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+
+    reason = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    provider_response = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    sent_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return (
+            f"{self.user.email} - "
+            f"{self.channel} - "
+            f"{self.status}"
+        )
+    
+#for jobseekersetting
+
+class JobseekerPlatformSettings(models.Model):
+
+    def default_allowed_domains():
+
+        return [
+
+            "gmail.com",
+
+            "outlook.com",
+
+            "yahoo.com"
+        ]
+
+    PROFILE_VISIBILITY_CHOICES = [
+
+        ("Public", "Public"),
+
+        ("Employers Only", "Employers Only"),
+
+        ("Private", "Private"),
+    ]
+
+    ACCOUNT_STATUS_CHOICES = [
+
+        ("Active", "Active"),
+
+        ("Pending", "Pending"),
+
+        ("Blocked", "Blocked"),
+    ]
+
+    # ─────────────────────────────────────
+    # REGISTRATION
+    # ─────────────────────────────────────
+
+    registration = models.BooleanField(
+        default=True
+    )
+
+    email_verification = models.BooleanField(
+        default=True
+    )
+
+    phone_verification = models.BooleanField(
+        default=False
+    )
+
+    domain_restriction = models.BooleanField(
+        default=False
+    )
+
+    allowed_domains = models.JSONField(
+
+    default=default_allowed_domains,
+
+    blank=True
+)
+
+    default_role = models.CharField(
+        max_length=100,
+        default="Job Seeker"
+    )
+
+    account_status = models.CharField(
+        max_length=50,
+        choices=ACCOUNT_STATUS_CHOICES,
+        default="Active"
+    )
+
+    # ─────────────────────────────────────
+    # PROFILE SETTINGS
+    # ─────────────────────────────────────
+
+    profile_visibility = models.CharField(
+        max_length=50,
+        choices=PROFILE_VISIBILITY_CHOICES,
+        default="Employers Only"
+    )
+
+    resume_visibility = models.CharField(
+        max_length=50,
+        choices=PROFILE_VISIBILITY_CHOICES,
+        default="Employers Only"
+    )
+
+    anonymous_profile = models.BooleanField(
+        default=False
+    )
+
+    profile_completion_required = models.CharField(
+        max_length=20,
+        default="0 %"
+    )
+
+    # ─────────────────────────────────────
+    # JOB FEATURES
+    # ─────────────────────────────────────
+
+    salary_visibility = models.BooleanField(
+        default=True
+    )
+
+    company_reviews = models.BooleanField(
+        default=True
+    )
+
+    application_status_tracking = models.BooleanField(
+        default=True
+    )
+
+    similar_jobs = models.BooleanField(
+        default=True
+    )
+
+    career_advice = models.BooleanField(
+        default=True
+    )
+
+    easy_apply = models.BooleanField(
+        default=True
+    )
+
+    save_jobs = models.BooleanField(
+        default=True
+    )
+
+    max_applications = models.PositiveIntegerField(
+        default=30
+    )
+
+    application_expiry_days = models.PositiveIntegerField(
+        default=60
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    # ─────────────────────────────────────
+    # SINGLETON SETTINGS
+    # ─────────────────────────────────────
+
+    def save(self, *args, **kwargs):
+
+        self.pk = 1
+
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_settings(cls):
+
+        obj, created = cls.objects.get_or_create(
+            pk=1
+        )
+
+        return obj

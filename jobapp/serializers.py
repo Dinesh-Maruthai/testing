@@ -1891,3 +1891,417 @@ class AdminAccessLogSerializer(serializers.ModelSerializer):
             "extra_data",
         ]
  
+
+
+
+
+# for employer setting
+
+from rest_framework import serializers
+from .models import EmployerPlatformSettings
+class EmployerPlatformSettingsSerializer(serializers.ModelSerializer):
+
+    # ─────────────────────────────────────────
+    # PLAN
+    # ─────────────────────────────────────────
+
+    plan = serializers.CharField(
+        source='plan.name',
+        read_only=True
+    )
+
+    # ─────────────────────────────────────────
+    # REQUIRED DOCUMENTS
+    # ─────────────────────────────────────────
+
+    requiredDocs = serializers.SerializerMethodField()
+
+    # ─────────────────────────────────────────
+    # PREFERENCES
+    # ─────────────────────────────────────────
+
+    preferences = serializers.SerializerMethodField()
+
+    # ─────────────────────────────────────────
+    # NOTIFICATIONS
+    # ─────────────────────────────────────────
+
+    notifications = serializers.SerializerMethodField()
+
+    class Meta:
+
+        model = EmployerPlatformSettings
+
+        fields = [
+
+            # Plan
+            'plan',
+
+            # Basic Settings
+            'employer_registration',
+            'email_verification',
+            'mobile_verification',
+            'approval_type',
+            'account_status',
+
+            # Job Settings
+            'job_expire_days',
+            'max_job_posts',
+            'featured_job_limit',
+            'allow_edit_after_approval',
+
+            # Nested Groups
+            'requiredDocs',
+            'preferences',
+            'notifications',
+        ]
+
+    # ─────────────────────────────────────────
+    # REQUIRED DOCS RESPONSE
+    # ─────────────────────────────────────────
+
+    def get_requiredDocs(self, obj):
+
+        return {
+
+            "companyCert": obj.req_company_cert,
+
+            "gstCert": obj.req_gst_cert,
+
+            "businessEmail": obj.req_business_email,
+
+            "companyWebsite": obj.req_company_website,
+        }
+
+    # ─────────────────────────────────────────
+    # PREFERENCES RESPONSE
+    # ─────────────────────────────────────────
+
+    def get_preferences(self, obj):
+
+        return {
+
+            "multipleCompany": obj.allow_multiple_company,
+
+            "multipleUsers": obj.allow_multiple_users,
+
+            "companyReviews": obj.show_company_reviews,
+
+            "companyBranding": obj.enable_company_branding,
+
+            "featuredEmployer": obj.featured_employer_option,
+        }
+
+    # ─────────────────────────────────────────
+    # NOTIFICATIONS RESPONSE
+    # ─────────────────────────────────────────
+
+    def get_notifications(self, obj):
+
+        return {
+
+            "email": obj.notif_email,
+
+            "newSignups": obj.notif_new_signups,
+
+            "alerts": obj.notif_alerts,
+
+            "announcements": obj.notif_announcements,
+
+            "weeklySummary": obj.notif_weekly_summary,
+        }
+
+    # ─────────────────────────────────────────
+    # UPDATE
+    # ─────────────────────────────────────────
+
+    def update(self, instance, validated_data):
+
+        request = self.context.get("request")
+
+        data = request.data
+
+        # ─────────────────────────────────────
+        # REQUIRED DOCUMENTS
+        # ─────────────────────────────────────
+
+        required_docs = data.get(
+            "requiredDocs",
+            {}
+        )
+
+        instance.req_company_cert = required_docs.get(
+            "companyCert",
+            instance.req_company_cert
+        )
+
+        instance.req_gst_cert = required_docs.get(
+            "gstCert",
+            instance.req_gst_cert
+        )
+
+        instance.req_business_email = required_docs.get(
+            "businessEmail",
+            instance.req_business_email
+        )
+
+        instance.req_company_website = required_docs.get(
+            "companyWebsite",
+            instance.req_company_website
+        )
+
+        # ─────────────────────────────────────
+        # PREFERENCES
+        # ─────────────────────────────────────
+
+        preferences = data.get(
+            "preferences",
+            {}
+        )
+
+        instance.allow_multiple_company = preferences.get(
+            "multipleCompany",
+            instance.allow_multiple_company
+        )
+
+        instance.allow_multiple_users = preferences.get(
+            "multipleUsers",
+            instance.allow_multiple_users
+        )
+
+        instance.show_company_reviews = preferences.get(
+            "companyReviews",
+            instance.show_company_reviews
+        )
+
+        instance.enable_company_branding = preferences.get(
+            "companyBranding",
+            instance.enable_company_branding
+        )
+
+        instance.featured_employer_option = preferences.get(
+            "featuredEmployer",
+            instance.featured_employer_option
+        )
+
+        # ─────────────────────────────────────
+        # NOTIFICATIONS
+        # ─────────────────────────────────────
+
+        notifications = data.get(
+            "notifications",
+            {}
+        )
+
+        instance.notif_email = notifications.get(
+            "email",
+            instance.notif_email
+        )
+
+        instance.notif_new_signups = notifications.get(
+            "newSignups",
+            instance.notif_new_signups
+        )
+
+        instance.notif_alerts = notifications.get(
+            "alerts",
+            instance.notif_alerts
+        )
+
+        instance.notif_announcements = notifications.get(
+            "announcements",
+            instance.notif_announcements
+        )
+
+        instance.notif_weekly_summary = notifications.get(
+            "weeklySummary",
+            instance.notif_weekly_summary
+        )
+
+        # ─────────────────────────────────────
+        # NORMAL FIELDS
+        # ─────────────────────────────────────
+
+        normal_fields = [
+
+            'employer_registration',
+
+            'email_verification',
+
+            'mobile_verification',
+
+            'approval_type',
+
+            'account_status',
+
+            'job_expire_days',
+
+            'max_job_posts',
+
+            'featured_job_limit',
+
+            'allow_edit_after_approval',
+        ]
+
+        for field in normal_fields:
+
+            if field in validated_data:
+
+                setattr(
+                    instance,
+                    field,
+                    validated_data[field]
+                )
+
+        instance.save()
+
+        return instance
+
+
+#for jobseekersetting
+from .models import JobseekerPlatformSettings
+
+
+class JobseekerPlatformSettingsSerializer(
+    serializers.ModelSerializer
+):
+
+    emailVer = serializers.BooleanField(
+        source="email_verification"
+    )
+
+    phoneVer = serializers.BooleanField(
+        source="phone_verification"
+    )
+
+    domainRest = serializers.BooleanField(
+        source="domain_restriction"
+    )
+
+    allowedDomains = serializers.ListField(
+        source="allowed_domains",
+        child=serializers.CharField(),
+        required=False
+    )
+
+    defaultRole = serializers.CharField(
+        source="default_role"
+    )
+
+    accountStatus = serializers.CharField(
+        source="account_status"
+    )
+
+    profileVisibility = serializers.CharField(
+        source="profile_visibility"
+    )
+
+    resumeVisibility = serializers.CharField(
+        source="resume_visibility"
+    )
+
+    anonymous = serializers.BooleanField(
+        source="anonymous_profile"
+    )
+
+    completionPercent = serializers.CharField(
+        source="profile_completion_required"
+    )
+
+    salary = serializers.BooleanField(
+        source="salary_visibility"
+    )
+
+    reviews = serializers.BooleanField(
+        source="company_reviews"
+    )
+
+    appStatus = serializers.BooleanField(
+        source="application_status_tracking"
+    )
+
+    similarJobs = serializers.BooleanField(
+        source="similar_jobs"
+    )
+
+    advice = serializers.BooleanField(
+        source="career_advice"
+    )
+
+    easyApply = serializers.BooleanField(
+        source="easy_apply"
+    )
+
+    saveJobs = serializers.BooleanField(
+        source="save_jobs"
+    )
+
+    maxApps = serializers.IntegerField(
+        source="max_applications"
+    )
+
+    appExpiry = serializers.IntegerField(
+        source="application_expiry_days"
+    )
+
+    class Meta:
+
+        model = JobseekerPlatformSettings
+
+        fields = [
+
+            "id",
+
+            "registration",
+
+            "emailVer",
+
+            "phoneVer",
+
+            "domainRest",
+
+            "allowedDomains",
+
+            "defaultRole",
+
+            "accountStatus",
+
+            "profileVisibility",
+
+            "resumeVisibility",
+
+            "anonymous",
+
+            "completionPercent",
+
+            "salary",
+
+            "reviews",
+
+            "appStatus",
+
+            "similarJobs",
+
+            "advice",
+
+            "easyApply",
+
+            "saveJobs",
+
+            "maxApps",
+
+            "appExpiry",
+
+            "updated_at"
+        ]
+
+    def validate_allowed_domains(self, value):
+
+        return [
+
+            domain.lower().strip()
+
+            for domain in value
+
+            if domain.strip()
+        ]

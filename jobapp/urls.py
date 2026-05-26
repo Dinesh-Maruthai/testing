@@ -103,6 +103,9 @@ from .views import (
     AdminQuietHoursView,
     NotificationPreferenceListView,
     NotificationPreferenceUpdateView,
+    JobseekerPlatformSettingsView,
+    EmployerWeeklySummaryView,
+    EmployerPlatformSettingsView,
     
 
     # REMOVED: Company-related view imports (CompanyListView, CompanyDetailView, etc.)
@@ -310,12 +313,28 @@ urlpatterns = [
     path("admin-trusted-devices/", AdminTrustedDeviceListView.as_view(),),
     path("admin-trusted-devices/<int:device_id>/",RevokeTrustedDeviceView.as_view(),),
     path("admin-access-log/",AdminAccessLogListView.as_view(),),
-
+ 
+   
     # for cat - 3Admin 2FA
+ 
     path("admin/2fa/status/", Admin2FAStatusView.as_view(), name="admin-2fa-status"),
-    path("admin-2fa/login/verify-otp/",VerifyAdminLoginOTPView.as_view(),name="admin-login-verify-otp"), #login
+    path("admin-2fa/login/verify-otp/",VerifyAdminLoginOTPView.as_view(),name="admin-login-verify-otp"),
+ 
     path("admin/2fa/send-otp/",SendAdmin2FAOTPView.as_view(),name="admin-2fa-send-otp"),
+ 
     path("admin/2fa/verify-otp/",VerifyAdmin2FAOTPView.as_view(),name="admin-2fa-verify-otp"),
+ 
     path("admin/2fa/disable/", DisableAdmin2FAView.as_view(),name="admin-2fa-disable"),
+
+        #for employer setting 
+
+    path("employer-settings/<int:plan_id>/",EmployerPlatformSettingsView.as_view(), name="employer-platform-settings"),
+    path('employer/weekly-summary/',EmployerWeeklySummaryView.as_view(),name='employer-weekly-summary'),
+
+    # jobseekersetting
+
+    path('jobseeker/settings/',JobseekerPlatformSettingsView.as_view(),name='jobseeker-platform-settings')
+
+
  
 ]

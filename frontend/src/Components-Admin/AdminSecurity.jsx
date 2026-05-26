@@ -32,6 +32,7 @@ export const AdminSecurity = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [is2FALoading, setIs2FALoading] = useState(false);
+  const [trustedDevices, setTrustedDevices] = useState([]);
 
   const handleVerifyClick = (method) => {
     setSelectedMethod(method);
@@ -40,6 +41,56 @@ export const AdminSecurity = () => {
     sendOTP(method);
   };
 
+  const fetchAccessLogs = async () => {
+  try {
+    const response = await api.get('admin-access-log/');
+    console.log("Logs response:", response.data);
+   
+    if (response?.data?.success && response?.data?.results) {
+     
+      const formattedLogs = response.data.results.map(log => ({
+        date: new Date(log.timestamp).toLocaleString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }).toUpperCase(),
+        action: log.action.replace(/_/g, ' '),
+        location: log.location || 'Unknown',
+        ip: log.ip_address || 'Unknown',
+        status: log.status
+      }));
+      setLogs(formattedLogs);
+    }
+  } catch (error) {
+    console.error("Failed to fetch access logs:", error);
+  }
+};
+ 
+ 
+ 
+ 
+const fetchTrustedDevices = async () => {
+  try {
+    const response = await api.get('admin-trusted-devices/');
+    console.log("Trusted devices response:", response.data);
+   
+    if (response?.data?.success && response?.data?.results) {
+      const formattedDevices = response.data.results.map(device => ({
+        id: device.id.toString(),
+        name: device.device_name,
+        platform: device.platform,
+        last_used: device.last_used_at
+      }));
+      setTrustedDevices(formattedDevices);
+    }
+  } catch (error) {
+    console.error("Failed to fetch trusted devices:", error);
+  }
+};
+ 
   const handleOtpSubmit = async () => {
     try {
       setIs2FALoading(true);
@@ -102,6 +153,8 @@ export const AdminSecurity = () => {
 
   useEffect(() => {
     fetch2FAstatus();
+    fetchAccessLogs();  
+    fetchTrustedDevices();
   }, []);
 
   const fetch2FAstatus = async () => {
@@ -184,11 +237,6 @@ export const AdminSecurity = () => {
     }
   };
 
-  const [trustedDevices, setTrustedDevices] = useState([
-    { id: '1', name: 'Admin iPad Pro 12.9"' },
-    { id: '2', name: 'Sec-Ops Workstation 04' }
-  ]);
-
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -196,21 +244,21 @@ export const AdminSecurity = () => {
     expirationInterval: '30 Days'
   });
 
-  const handleRevoke = async (id) => {
-    const isConfirm = window.confirm("Are you sure to remove this Device from trusted devices?")
-    if (isConfirm) {
-      try {
-        await api.post(`admin/revoke-device/${id}/`);
-        setTrustedDevices(prev => prev.filter(device => device.id !== id))
-        addAccessLog("Revoke Device", "SUCCESS");
-      } catch (error) {
-        console.error("Failed to revoke device:", error);
-        addAccessLog("Revoke Device", "FAILED");
-        alert("Failed to revoke device. Please try again.");
-      }
+const handleRevoke = async (id) => {
+  const isConfirm = window.confirm("Are you sure to remove this device from trusted devices?");
+  if (isConfirm) {
+    try {
+      await api.delete(`admin-trusted-devices/${id}/`);
+      setTrustedDevices(prev => prev.filter(device => device.id !== id));
+      addAccessLog("DEVICE_REVOKED", "SUCCESS");
+      alert("Device revoked successfully");
+    } catch (error) {
+      console.error("Failed to revoke device:", error);
+      addAccessLog("DEVICE_REVOKED", "FAILED");
+      alert(error?.response?.data?.message || "Failed to revoke device. Please try again.");
     }
   }
-
+};
   const handleCancel = () => {
     setShowModal(false);
     setOtpInput('');
